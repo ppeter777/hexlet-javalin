@@ -4,12 +4,22 @@ import io.javalin.Javalin;
 
 public class HelloWorld {
     public static void main(String[] args) {
-        // Создаем приложение
         var app = Javalin.create(config -> {
             config.plugins.enableDevLogging();
         });
-        // Описываем, что загрузится по адресу /
-        app.get("/", ctx -> ctx.result("Hello World"));
-        app.start(7070); // Стартуем веб-сервер
+        app.get("/hello", ctx -> {
+            var name = ctx.queryParam("name");
+            ctx.contentType("text/html");
+            if (name.isEmpty()) {
+                name = "WORLD";
+            }
+            ctx.result("<h1>Hello, " + name + "!</h1>");
+        });
+        app.get("/", ctx -> {
+            var name = ctx.queryParam("name");
+            ctx.contentType("text/html");
+            ctx.result("<h1>Hello, World!</h1>");
+        });
+        app.start(7070);
     }
 }
