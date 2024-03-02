@@ -7,6 +7,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import io.javalin.validation.ValidationException;
+import org.example.hexlet.controller.UsersController;
+import org.example.hexlet.dto.MainPage;
+import org.example.hexlet.dto.users.BuildUserPage;
 import org.example.hexlet.model.Course;
 import org.example.hexlet.dto.courses.CoursesPage;
 import org.example.hexlet.dto.users.UsersPage;
@@ -35,7 +39,15 @@ public class HelloWorld {
         var app = Javalin.create(config -> {
             config.plugins.enableDevLogging();
         });
-        app.get("/", ctx -> ctx.render("index.jte"));
+        app.get("/", ctx -> {
+            var visited = Boolean.valueOf(ctx.cookie("visited"));
+            var page = new MainPage(visited);
+            ctx.render("index.jte", Collections.singletonMap("page", page));
+            ctx.cookie("visited", String.valueOf(true));
+        });
+
+
+
         app.get("/courses", ctx -> {
 
             var term = ctx.queryParam("term");
@@ -49,24 +61,34 @@ public class HelloWorld {
             var page = new CoursesPage(coursesFiltered, header, term);
             ctx.render("courses/index.jte", Collections.singletonMap("page", page));
         });
-        app.get("/users/build", ctx -> {
-            ctx.render("users/build.jte");
+        app.get(NamedRoutes.buildUserPath(), ctx -> {
+            var page = new BuildUserPage();
+            ctx.render("users/build.jte", Collections.singletonMap("page", page));
         });
-        app.post("/users", ctx -> {
+        app.post(NamedRoutes.usersPath(), ctx -> {
             var name = ctx.formParam("name");
             var email = ctx.formParam("email");
-            var password = ctx.formParam("password");
-            var passwordConfirmation = ctx.formParam("passwordConfirmation");
 
-            var user = new User(name, email, password);
-            UserRepository.save(user);
-            ctx.redirect("/users");
+            try {
+                var passwordConfirmation = ctx.formParam("passwordConfirmation");
+                var password = ctx.formParamAsClass("password", String.class)
+                        .check(value -> value.equals(passwordConfirmation), "Passwords do not match")
+                        .get();
+                var user = new User(name, email, password);
+                UserRepository.save(user);
+                ctx.redirect("/users");
+            } catch (ValidationException e) {
+                var page = new BuildUserPage(name, email, e.getErrors());
+                ctx.render("users/build.jte", Collections.singletonMap("page", page));
+            }
         });
-        app.get("/users", ctx -> {
-            List<User> users = UserRepository.getEntities();
-            var page = new UsersPage(users);
-            ctx.render("users/index.jte", Collections.singletonMap("page", page));
-        });
+        app.get("/users", UsersController::index);
+
+//                ctx -> {
+//            List<User> users = UserRepository.getEntities();
+//            var page = new UsersPage(users);
+//            ctx.render("users/index.jte", Collections.singletonMap("page", page));
+//        });
         app.start(7070);
     }
 }
