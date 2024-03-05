@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import io.javalin.validation.ValidationException;
+import org.example.hexlet.controller.SessionsController;
 import org.example.hexlet.controller.UsersController;
 import org.example.hexlet.dto.MainPage;
 import org.example.hexlet.dto.users.BuildUserPage;
@@ -40,13 +41,13 @@ public class HelloWorld {
             config.plugins.enableDevLogging();
         });
         app.get("/", ctx -> {
-            var visited = Boolean.valueOf(ctx.cookie("visited"));
-            var page = new MainPage(visited);
+            var page = new MainPage(ctx.sessionAttribute("currentUser"));
             ctx.render("index.jte", Collections.singletonMap("page", page));
-            ctx.cookie("visited", String.valueOf(true));
         });
 
-
+        app.get("/sessions/build", SessionsController::build);
+        app.post("/sessions", SessionsController::create);
+        app.delete("/sessions", SessionsController::destroy);
 
         app.get("/courses", ctx -> {
 
